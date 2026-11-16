@@ -2,13 +2,14 @@
 
 ## 本机入口
 
-- 工作流：`<WORKSPACE>/工作流/豆包配音对齐/run-voice.sh`；实现为同目录 `voice_align.py`。环境和模型复现见该目录 README 与锁定依赖，不重装可用环境。
-- 私密凭据：`<PRIVATE_CONFIG>/doubao-tts.json`（0600），或 `DOUBAO_TTS_API_KEY`。只记录位置/变量名，正文不得写入 Skill、Obsidian、文案、截图或日志。
+- 工作流：`<自媒体工作区>/工作流/豆包配音对齐/run-voice.sh`；实现为同目录 `voice_align.py`。环境和模型复现见该目录 README 与锁定依赖，不重装可用环境。
+- 私密凭据：`~/.config/fugui/doubao-tts.json`（0600），或 `DOUBAO_TTS_API_KEY`。只记录位置/变量名，正文不得写入 Skill、Obsidian、文案、截图或日志。
 
 新项目一条命令执行全文合成与对齐：
 
 ```bash
-"<WORKSPACE>/工作流/豆包配音对齐/run-voice.sh" run \
+# SELFMEDIA_ROOT 为实际自媒体工作区的绝对路径。
+"$SELFMEDIA_ROOT/工作流/豆包配音对齐/run-voice.sh" run \
   --script "/绝对路径/定稿.txt" \
   --voice "zh_male_huolixiaoge_uranus_bigtts" --speed 1.0 \
   --out-dir "/绝对路径/工程/audio"
@@ -19,7 +20,7 @@
 WAV 完成但对齐失败，先核对文稿/音频哈希，保留失败候选，恢复第二步，不再 TTS：
 
 ```bash
-"<WORKSPACE>/工作流/豆包配音对齐/run-voice.sh" align \
+"$SELFMEDIA_ROOT/工作流/豆包配音对齐/run-voice.sh" align \
   --script "/绝对路径/定稿.txt" --out-dir "/绝对路径/工程/audio"
 ```
 
@@ -47,3 +48,7 @@ schema_version=1，含 duration_ms、fps、script_path/audio_path、两者 SHA25
 5. 峰值、削波、源音频对应等技术指标与人工逐字试听分开。没有试听能力如实说明，保持 false。
 
 交付范围按本次授权。已导出可标 rendered；人物未获接受和整段未复听分别保留候选/待听验，不宣称正式发布或完全验收。
+
+## 开头声音回归检查
+
+运行 `scripts/check_rendered_media.py` 检查实际编码 MP4。前 10 秒以 10ms RMS 窗口、-40dBFS 阈值测活动起点，默认不晚于 250ms；同时检查音轨与全片解码。不要在口播前放无声片头，不盲目裁剪原配音。背景音乐不能作为口播已开始的证据，活动检测也不能证明可懂度；人工听验单独记录，未听保持 false。

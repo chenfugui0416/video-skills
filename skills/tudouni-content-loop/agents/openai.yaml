@@ -1,0 +1,4 @@
+interface:
+  display_name: "土豆泥口播闭环"
+  short_description: "研究相关热点与爆款，ego内Gemini写口播，Codex审核返工后接配音和制片"
+  default_prompt: "用 $tudouni-content-loop 研究相关热点，交给ego内Gemini第4代写口播，由Codex审核返工，再按已授权范围制片。"

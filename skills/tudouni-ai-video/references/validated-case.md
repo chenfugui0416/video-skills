@@ -4,8 +4,8 @@
 
 ## 位置
 
-- 内容：`<WORKSPACE>/内容库/AI 抖音教程/2026-10-03-Skills该怎么做/`。定稿 `口播稿-定稿.txt`，编排 `visual-plan.md`，状态 `制作状态.json`，新版 `video/六镜样片-v2.mp4`，v1 保留。
-- 工程：`<LOCAL_CACHE>/knowledge-video-director/2026-10-03-skills-broll/`。`build_full_video.py`、`index.html`、六个子镜头、字体和素材；依赖 CLI 0.8.121、GSAP 3.14.2。许可见 `THIRD_PARTY_NOTICES.md`。
+- 内容：`<自媒体工作区>/内容库/AI 抖音教程/2026-10-03-Skills该怎么做/`。定稿 `口播稿-定稿.txt`，编排 `visual-plan.md`，状态 `制作状态.json`，新版 `video/六镜样片-v2.mp4`，v1 保留。
+- 工程：`~/.cache/knowledge-video-director/2026-10-03-skills-broll/`。`build_full_video.py`、`index.html`、六个子镜头、字体和素材；依赖 CLI 0.8.121、GSAP 3.14.2。许可见 `THIRD_PARTY_NOTICES.md`。
 - 当前时间轴：工程 `voice-young-v1/timeline.json`；对应声音、对齐、一次合成记录在 `voice-young-v1/audio/`。工程根目录旧 `audio/` 是云舟首版，不能误用。
 - 原稿 SHA256：`e429356f1b71b2969433a5cd86437b0f8997be715d505d6f5ae5a83064564c82`。
 - 活力小哥 WAV SHA256：`86ad05e6ac945f02b80f3d083b5f1d1200cf6e4617c81007860310acf1034c8b`。
@@ -43,7 +43,7 @@
 
 用户明确要求对标 `1.mp4` 的横屏 A-roll / B-roll 剪辑，并在右上角留下“土豆泥讲 AI”。此轮按同一件会议记录任务贯穿，重新编排十镜；配音、文案和原 30 段真实时间戳全部复用。当前审片入口为内容目录 `video/横屏故事版-v3.mp4`、`visual-plan-横屏-v3.md`、`横屏故事版-v3说明.md`。
 
-工程另存于 `<LOCAL_CACHE>/knowledge-video-director/2026-10-05-skills-landscape-v3/`，CLI 固定 0.8.133；旧工程 0.8.121 和 v1/v2 文件保留。`build_landscape.py` 重建横屏画面，`verify_render.py` 检查实际编码和生成画面总览。引用、字体和 registry 骨架来源见工程 `THIRD_PARTY_NOTICES.md`、`registry-search.json`。
+工程另存于 `~/.cache/knowledge-video-director/2026-10-05-skills-landscape-v3/`，CLI 固定 0.8.133；旧工程 0.8.121 和 v1/v2 文件保留。`build_landscape.py` 重建横屏画面，`verify_render.py` 检查实际编码和生成画面总览。引用、字体和 registry 骨架来源见工程 `THIRD_PARTY_NOTICES.md`、`registry-search.json`。
 
 | 镜头 | 时间 ms | 叙事作用 |
 |---|---|---|
@@ -72,7 +72,7 @@
 用户提供了浅色点阵、左下角圆形人物的参考，要求科普段使用自己的 IP 并更自然。五个 B-roll 信息镜头改为奶油点阵画布、左下角 FUGui、中右语义图解，人物情境与操作镜头保留；原图、原稿、活力小哥配音及 30 段声学时间戳直接复用，没有新生图或 TTS 请求。其余镜头仍按故事意图安排，不将所有画面强制套头像。
 
 - 交付：内容目录 `video/横屏讲解画布版-v4.mp4`、`visual-plan-横屏-v4.md`、`横屏讲解画布版-v4说明.md`；v3 保留。
-- 工程另存 `<LOCAL_CACHE>/knowledge-video-director/2026-10-07-skills-explainer-v4/`，CLI 固定 0.8.137。新工程升级经过严格检查，旧工程依赖未修改；registry 查询记录 `registry-presenter-search.json`。
+- 工程另存 `~/.cache/knowledge-video-director/2026-10-07-skills-explainer-v4/`，CLI 固定 0.8.137。新工程升级经过严格检查，旧工程依赖未修改；registry 查询记录 `registry-presenter-search.json`。
 - 圆形头像直接展示本地 FUGui 透明图，保留蓝方块、五官、口罩、F 胸章；下方躯干有意圆形裁切。五个语义重点处各做一次有限轻微位移和约半秒蓝灰短线回应，无循环、假口型或连续角色表演。
 - 图解主体重排到中右，点阵静止且低对比，字幕与头像分区，右上栏目水印全程保留。参考角色、绿色强调线和播放器 UI 没有复制。
 - `check.json` 严格检查全部零错误、警告和提示，对比度 58/58 通过。`input-check.json` 通过全文、音频、短语和十镜事件边界检查。

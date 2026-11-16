@@ -1,0 +1,185 @@
+diff --git a/lib/bundle.js b/lib/bundle.js
+index 51c4d7d..913d08d 100644
+--- a/lib/bundle.js
++++ b/lib/bundle.js
+@@ -62,9 +62,9 @@ export function validate(b, files = null) {
+       else if (/微信/.test(all)) warnings.push(`${tag}：正文提到了「微信」，确认不是在引流`);
+       const lead = all.match(LEAD);
+       if (lead) errors.push(`${tag}：正文在引流（「${lead[0]}」），这个平台最多写「整理成文档了，私信我」`);
+-      // 国内短视频平台直接写模型名容易被限流/封禁：用 Agent、CC、AI 这类代称（2026-11-12）
++      // 土豆泥适配：模型名称是教程事实，不根据未经核验的限流经验改名。
+       const model = all.match(/Claude|Codex|ChatGPT|GPT-?\d|Gemini|Anthropic|OpenAI|DeepSeek/i);
+-      if (model) errors.push(`${tag}：出现了模型/厂商名「${model[0]}」，这个平台要换成 Agent、CC、AI 这类代称`);
++      if (model) warnings.push(`${tag}：保留真实模型/厂商名「${model[0]}」，结合具体平台要求复核，不自动改写事实`);
+       // 「Grok Bot / GrokBot」是系列名，国内平台可以透出（2026-11-13）；单独的「Grok」模型名只提醒
+       const grok = all.replace(/Grok\s?Bot/gi, '').match(/Grok/i);
+       if (grok) warnings.push(`${tag}：出现了单独的「Grok」，确认指的是 Grok Bot 而不是模型`);
+diff --git a/lib/publish.js b/lib/publish.js
+index 07ce6d0..03916cb 100644
+--- a/lib/publish.js
++++ b/lib/publish.js
+@@ -121,6 +121,9 @@ export async function preflight(ids, { windowId, keepTabs = true } = {}) {
+  */
+ export async function run(project, opts) {
+   const b = project.data;
++  // 个人视频工作流：单平台逐次上传草稿，不接受排期。
++  if (b.schedule) throw new Error('当前工作流仅上传草稿，不接受 schedule');
++  if (opts.platforms.length !== 1 || !['douyin', 'xhs'].includes(opts.platforms[0])) throw new Error('每次只选择抖音或小红书一个平台');
+   const abs = (rel) => `${opts.rootPath.replace(/\/$/, '')}/${project.dir}/${rel}`;
+   const states = {};
+   const pending = [];
+@@ -148,7 +151,7 @@ export async function run(project, opts) {
+       p, video: abs(p.video || b.video), projectId: b.id, durationSec: b.durationSec || 0,
+       cover: (k) => ((p.covers || []).includes(k) && b.covers[k]) ? abs(b.covers[k]) : null,
+       log: st.log, note: st.note, fail: st.fail,
+-      schedule: b.schedule ? bjTime(b.schedule) : null,    // 北京时间各字段；null = 立即发布
++      schedule: b.schedule ? bjTime(b.schedule) : null,    // 无排期；填写完成后仍需保存并核验平台草稿
+       withFocus: (fn) => withFocus(ctx.tabId, fn),          // 后台做不成的步骤，短暂切到前台
+     };
+     try {
+@@ -183,12 +186,10 @@ export async function run(project, opts) {
+       if (ad.afterUpload) {
+         try { await ad.afterUpload(ctx); }
+         catch (e) {
+-          st.note(`后台补封面没成功（${e.message}），切到这个页面重试一次`);
+-          try { await withFocus(ctx.tabId, () => ad.afterUpload(ctx)); }
+-          catch (e2) { st.fail(e2.message); }
++          st.fail(`补封面未成功：${e.message}；停止并核对页面，不自动重试`);
+         }
+       }
+-      st.set(st.failed ? '异常' : '待你发布');
++      st.set(st.failed ? '异常' : '待核验草稿');
+     }
+     if (pending.length) await sleep(20000);
+   }
+diff --git a/manifest.json b/manifest.json
+index cb9d168..86ebbaf 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,6 +1,6 @@
+ {
+   "manifest_version": 3,
+-  "name": "麦田发布助手",
++  "name": "麦田发布助手 · 土豆泥草稿适配",
+   "version": "0.4.0",
+   "description": "麦田工作台的发布引擎：把一期视频的标题、正文、封面和定时一次填进你常用的视频平台上传页，也能把 Obsidian 笔记写进 X 长文。只填写，发布由你自己点。",
+   "permissions": [
+@@ -38,5 +38,6 @@
+     "16": "icons/icon16.png",
+     "48": "icons/icon48.png",
+     "128": "icons/icon128.png"
+-  }
++  },
++  "version_name": "0.4.0-tudouni.1"
+ }
+diff --git a/sidepanel.html b/sidepanel.html
+index 4d41297..48e37ee 100644
+--- a/sidepanel.html
++++ b/sidepanel.html
+@@ -8,7 +8,7 @@
+ <body>
+   <header>
+     <h1>麦田发布助手</h1>
+-    <p class="sub">只填写、不发布，最后由你点发布</p>
++    <p class="sub">只填写草稿，保存后到平台核验</p>
+     <nav class="tabs">
+       <button data-view="video" class="tab on">视频分发</button>
+       <button data-view="article" class="tab">X 长文</button>
+@@ -19,7 +19,7 @@
+     <section class="card">
+       <div class="row">
+         <div>
+-          <div class="label">NAS 发布目录</div>
++          <div class="label">本地草稿交接目录</div>
+           <div id="nasName" class="value">未选择</div>
+         </div>
+         <div class="actions">
+@@ -28,11 +28,11 @@
+           <button id="btnNasPick" class="ghost">选择</button>
+         </div>
+       </div>
+-      <label class="opt path">本机路径 <input id="nasPath" type="text" spellcheck="false"></label>
++      <label class="opt path">所选目录的本机路径 <input id="nasPath" type="text" spellcheck="false" placeholder="填写所选目录的绝对路径"></label>
+     </section>
+ 
+     <section class="card">
+-      <div class="label">发布工程 <span class="hint">目录里有 publish.json 的</span></div>
++      <div class="label">草稿工程 <span class="hint">目录里有 publish.json 的</span></div>
+       <ul id="projects" class="notes"></ul>
+     </section>
+ 
+@@ -44,7 +44,7 @@
+       <div class="buttons">
+         <button id="btnCheck" class="ghost" disabled>检查登录</button>
+         <button id="btnLinks" class="ghost" disabled>回填链接</button>
+-        <button id="btnPublish" class="primary" disabled>一键填写所选平台</button>
++        <button id="btnPublish" class="primary" disabled>填写所选平台草稿</button>
+         <button id="btnPubStop" class="ghost hidden">停止</button>
+       </div>
+     </section>
+diff --git a/sidepanel.js b/sidepanel.js
+index 9425aee..9cafb0f 100644
+--- a/sidepanel.js
++++ b/sidepanel.js
+@@ -1,6 +1,5 @@
+ import { parseNote } from './lib/md.js';
+ import { xEngine } from './lib/engine.js';
+-import { startDevBridge } from './lib/devbridge.js';
+ import { initVideo } from './video.js';
+ import { savedVault, pickVault, regrant, scan, readText, resolveRef, loadImage } from './lib/vault.js';
+ 
+@@ -304,4 +303,4 @@ document.querySelectorAll('.tab').forEach(b => { b.onclick = () => showView(b.da
+ try { showView(localStorage.getItem('view') || 'video'); } catch { showView('video'); }
+ 
+ initVideo();
+-startDevBridge();
++// 本地个人工作流不启动原作者的开发调试桥。
+diff --git a/video.js b/video.js
+index cd89f9e..299a7df 100644
+--- a/video.js
++++ b/video.js
+@@ -5,7 +5,7 @@ import { PLATFORMS } from './lib/bundle.js';
+ 
+ const $ = (id) => document.getElementById(id);
+ const KEY = 'nasRoot', PATH_KEY = 'nasPath';
+-const DEFAULT_PATH = '/Volumes/sata11-176XXXX6901/视频导出';
++const DEFAULT_PATH = '';
+ 
+ let root = null;        // NAS 目录句柄
+ let projects = [];
+@@ -53,7 +53,7 @@ async function selectProject(pr) {
+   $('projCard').classList.remove('hidden');
+   $('projTitle').textContent = b.name;
+   const when = b.schedule ? new Date(b.schedule).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+-  $('projMeta').textContent = `${pr.dir} · 视频 ${b.video} · 封面 ${Object.keys(b.covers || {}).join(' / ')} · ${when ? `定时 ${when}` : '立即发布'}`;
++  $('projMeta').textContent = `${pr.dir} · 视频 ${b.video} · 封面 ${Object.keys(b.covers || {}).join(' / ')} · ${when ? '不支持排期' : '草稿填写（不发布）'}`;
+ 
+   $('projCheck').innerHTML = '';
+   result.errors.forEach(m => $('projCheck').appendChild(el('li', '', `❌ ${m}`)));
+@@ -159,7 +159,7 @@ async function backfillLinks() {
+       const rec = { updatedAt: new Date().toISOString(), platforms: { ...(old.platforms || {}) } };
+       for (const [id, v] of Object.entries(r.result)) if (v.url || !(rec.platforms[id] && rec.platforms[id].url)) rec.platforms[id] = { name: PLATFORMS[id].name, ...v };
+       const w = await fh.createWritable(); await w.write(JSON.stringify(rec, null, 2) + '\n'); await w.close();
+-      saved = '已写入 NAS：发布记录.json';
++      saved = '已写入本地工程：发布记录.json';
+     } else saved = '没有写入权限，结果只显示在这里';
+     head.append(el('div', 'label', '发布链接'), el('div', 'hint', saved));
+     $('statusList').appendChild(head);
+@@ -180,7 +180,7 @@ async function publish() {
+   const platforms = [...$('platList').querySelectorAll('input:checked')].map(i => i.value);
+   if (!platforms.length) return;
+   const rootPath = $('nasPath').value.trim();
+-  if (!rootPath.startsWith('/')) { alert('请先填 NAS 目录在本机的绝对路径'); return; }
++  if (!rootPath.startsWith('/')) { alert('请先填写所选草稿交接目录在本机的绝对路径'); return; }
+   try { localStorage.setItem(PATH_KEY, rootPath); } catch { /* 无痕模式 */ }
+   const win = await chrome.windows.getCurrent();
+   // 文件夹句柄不能跨进程传，只传相对路径和 publish.json 内容；流程在插件后台跑
+@@ -222,7 +222,7 @@ export async function initVideo() {
+     if ((await h.queryPermission({ mode: 'read' })) === 'granted') await loadRoot(h);
+     else { $('btnNasRegrant').classList.remove('hidden'); $('projects').innerHTML = '<li class="p">点「授权」继续读取这个目录</li>'; }
+   } else {
+-    $('projects').innerHTML = '<li class="p">点「选择」，选中 NAS 上的「视频导出」文件夹</li>';
++    $('projects').innerHTML = '<li class="p">点「选择」选中本地草稿交接目录，并填写同一目录的本机路径</li>';
+   }
+ 
+   // 开发接口（仅供本机开发桥接调用）
