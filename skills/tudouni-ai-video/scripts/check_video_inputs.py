@@ -31,7 +31,7 @@ def digest(path):
     return h.hexdigest()
 
 
-def check(data, script, audio, synthesis=None, align_text=None):
+def check(data, script, audio, synthesis=None, align_text=None, expected_resource='seed-tts-2.0'):
     errors, warnings = [], []
     report = {'ok': False, 'errors': errors, 'warnings': warnings}
     if not isinstance(data, dict):
@@ -200,13 +200,22 @@ def check(data, script, audio, synthesis=None, align_text=None):
         else:
             if not integer(synthesis.get('request_count')) or synthesis['request_count'] != 1:
                 errors.append('一次合成记录的 request_count 必须为整数 1')
-            if synthesis.get('resource_id') != 'seed-tts-2.0':
-                errors.append('一次合成记录不是豆包 TTS 2.0')
+            if synthesis.get('resource_id') != expected_resource:
+                errors.append(f'一次合成记录的资源与预期 {expected_resource} 不一致')
             if synthesis.get('script_sha256') != script_hash or synthesis.get('duration_ms') != measured:
                 errors.append('一次合成记录与定稿或音频时长不一致')
+            receipt_audio_hash = synthesis.get('audio_sha256')
+            if receipt_audio_hash is not None and receipt_audio_hash != data.get('audio_sha256'):
+                errors.append('一次合成记录的音频 SHA256 与实际音频不一致')
+            if expected_resource != 'seed-tts-2.0' and receipt_audio_hash is None:
+                errors.append('替代配音服务的回执必须包含音频 SHA256')
             report['voice_id'] = synthesis.get('speaker')
+            report['expected_resource'] = expected_resource
     else:
-        warnings.append('未提供 --synthesis，无法核对全文一次合成记录')
+        if expected_resource != 'seed-tts-2.0':
+            errors.append('替代配音服务必须提供 --synthesis 全文合成回执')
+        else:
+            warnings.append('未提供 --synthesis，无法核对全文一次合成记录')
     report.update(ok=not errors, audio_duration_ms=measured, phrase_count=len(phrases),
                   final_end_ms=phrases[-1].get('end_ms') if isinstance(phrases[-1], dict) else None,
                   shot_count=len(shots))
@@ -219,13 +228,16 @@ def main():
     parser.add_argument('--script', required=True, type=Path)
     parser.add_argument('--audio', required=True, type=Path)
     parser.add_argument('--synthesis', type=Path)
+    parser.add_argument('--expected-resource', default='seed-tts-2.0',
+                        help='本次已授权的配音资源；替代服务需显式指定并提供音频哈希')
     parser.add_argument('--align-text', type=Path)
     args = parser.parse_args()
     try:
         read = lambda p: p.read_text(encoding='utf-8-sig')
         report = check(json.loads(read(args.timeline)), read(args.script), args.audio,
                        json.loads(read(args.synthesis)) if args.synthesis else None,
-                       read(args.align_text) if args.align_text else None)
+                       read(args.align_text) if args.align_text else None,
+                       args.expected_resource)
     except (OSError, ValueError, TypeError, KeyError, wave.Error, EOFError) as exc:
         report = {'ok': False, 'errors': [f'无法校验：{type(exc).__name__}: {exc}'], 'warnings': []}
     print(json.dumps(report, ensure_ascii=False, indent=2))
